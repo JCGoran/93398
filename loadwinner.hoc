@@ -1,0 +1,26 @@
+objref generationfile, winnergenome
+strdef string1, loadme
+
+// $1: Generation
+proc loadwinner() { local position, endline, ro
+	sprint(loadme, "Generation%d.txt", $1) 
+	
+	winnergenome = new Vector()
+	generationfile = new File(loadme)
+	generationfile.ropen()
+	generationfile.seek(0)
+	
+	ro = 99						// loads lines with rank order (ro), genome till one
+	while (ro != 0) {				// with rank order 0 (= winner) is found.
+		thescore = generationfile.scanvar()
+		ro = generationfile.scanvar()
+		position = generationfile.tell()
+		generationfile.gets(string1)		
+		endline = generationfile.tell()
+		}
+
+	generationfile.seek(position)
+	while (generationfile.tell() < endline) {winnergenome.append(generationfile.scanvar())}	
+	generationfile.close()
+	for q=0, winnergenome.size()-1 {print winnergenome.x[q]}
+}

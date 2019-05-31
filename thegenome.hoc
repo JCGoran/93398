@@ -1,0 +1,82 @@
+/*
+
+
+
+*/
+
+begintemplate thegenome
+public gene, newgene, makegene, nextgeneration
+public pointmutate, dubmutate, delmutate
+
+objref dice, gene, newgene, genemean, genesd, syn
+
+/* ------------------------------------------------------------------------------------
+	Manipulations of the genome
+	all mutation procs work on NEWGENOME !
+*/
+
+proc init() {
+	genel = 14
+	setvalues()
+	dice = new Random($1)
+	makegene(4)
+}
+
+proc nextgeneration() {
+	newgene	= gene.c
+}
+
+// sets the values for the genes
+proc setvalues() {
+	genemean = new Vector()
+	genesd = new Vector()
+
+	genemean.append(32, 300, 100, 200, .5, 100, 100, PI/10, 10, 100, 10, 1/25, PI/2, 0)		
+	genesd.append(16, 100, 10, 100, .2, 10, 10, PI/10000, 10, 10, 2, 1/250, 4*PI, 4*PI)
+	/*
+	mean and standard deviation values for:
+	m0, length0, my length, sigmal length, assymetry0, my asymetry, sigma asymetry, 
+	branching0, my branching, sigma branching, diameter0, delta diameter, alpha0, beta0
+	*/
+}
+
+// makes a random genome
+// $1: nr of gene blocks (branches)
+proc makegene() { local index 
+	gene = new Vector(genel*int(dice.normal(1, 0.05)*$1))
+	newgene = new Vector(genel*int(dice.normal(1, 0.05)*$1))
+
+	for genenr = 0, gene.size()-1 {
+		index = genenr-genel*int(genenr/genel)
+		gene.x[genenr] = dice.normal(genemean.x[index], genesd.x[index]/10)
+		if (index == 0) { gene.x[genenr] = int(gene.x[genenr]) }
+	}	
+	newgene = gene.c
+}
+
+// changes the value of 1 gene
+proc pointmutate() { local target, index
+	target = int(dice.uniform(0, newgene.size()-1))
+//	index = target-genel*int(target/genel)		
+	newgene.x[target] = newgene.x[target]*dice.normal(1, .25)
+	if (target/genel == int(target/genel)) { newgene.x[target] = int(newgene.x[target]) }
+	// print "Point mutation at position ", target, " to value ", newgene.x[target]
+}
+
+// dublicates a gene block
+proc dubmutate(){local target
+	target = int(dice.uniform(0, newgene.size()/genel-1))
+	newgene.append(newgene.at(target*genel, target*genel+13))
+	// print "Dublication of genes ", target*genel, " to ", target*genel+13
+}
+
+// deletes a gene block
+proc delmutate(){local target
+	if (newgene.size() > genel) {
+		target = int(dice.uniform(0, newgene.size()/genel-1))
+		newgene.remove(target*genel, target*genel+13)
+	}
+	// print "Deletion of genes ", target*genel, target*genel+13
+}
+
+endtemplate thegenome

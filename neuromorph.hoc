@@ -1,0 +1,221 @@
+/*
+
+Generation of a neuronal morphology
+using local, reursive processes for branching decissions
+based on Samsonovich and Ascoli, Hippocampus (2004)
+some simplififications
+added: insertion of synapses based on dendritic position in space
+
+Klaus M. Stiefel, CNL, Salk Institute, 2-2005
+
+*/
+
+begintemplate neuronmorph
+public soma, dendrite, voltage
+public makecell, unmakecell
+public nall, allsections
+public setvalues, syn, syncounter, synapse 
+public synapseinsert, synapseremove, synapsespace
+external stimulator, genome
+
+objref synapse[1000], connection[1000], syn
+objref voltage, allsections
+
+create soma
+create dendrite[1][1]
+
+/* ------------------------------------------------------------------------------------
+	misc functions
+*/
+
+// $1: 0 $2: my $3: sigma
+func gaussian() {
+	return $1*exp(-(distance(1)-$2)^2/$3^2)
+}
+
+// $1 length0 $2 delta length $3 position
+func linear() {
+	return $1-distance($3)*$2
+}
+
+/* ------------------------------------------------------------------------------------
+	Generation of the morphology
+*/
+
+// add one dendritic segment to the neuron
+// this procedure is called iteratively to attach one dendritic segment at a time
+// $1: m $2: this segment index $3: x $4: y $5: z 
+// $6: alpha $7: beta $8: branch nr $9: parent index
+proc addbranch() { local m1, m2, length, diameter, alpha, beta, turn, counterold, asym
+
+		// recalibrate origin after tree changes
+		access soma
+		distance()
+		
+		// determine dendritic diameter and coordinates
+		if ($2 > -1) { access dendrite[$8][$9] } else { access soma }
+		
+		length = abs(gaussian(genome[mg].gene.x[1+$8*14], genome[mg].gene.x[2+$8*14], genome[mg].gene.x[3+$8*14]))
+
+		turn = gaussian(genome[mg].gene.x[7+$8*14],genome[mg].gene.x[8+$8*14],genome[mg].gene.x[9+$8*14])
+		if (turn < PI/32) { turn = PI/32 }	
+		if (int(counter/2) == counter/2) { alpha = $6 + turn } else {
+						   alpha = $6 - turn }
+						   
+		beta =  $7 				
+		
+		asym = int(gaussian(genome[mg].gene.x[4+$8*14],genome[mg].gene.x[5+$8*14],genome[mg].gene.x[6+$8*14]))
+		
+		// set 3d coordinates
+		access dendrite[$8][$2]
+		allsections.append()
+
+		diameter = 1
+		
+		if (length > 5) {
+			for ll=0, int(length/5) {
+				pt3dadd($3-ll*5*cos(beta)*sin(alpha), $5-ll*5*cos(alpha), $4-ll*5*sin(beta)*sin(alpha), diameter)
+				}
+			} else {
+			pt3dadd($3-length*cos(beta)*sin(alpha), $5-length*cos(alpha), $4-length*sin(beta)*sin(alpha), diameter)
+			}
+					
+		nseg = int(length/30)+2	
+		
+		access soma
+		distance() 
+		access dendrite[$8][$2]
+		diameter0 = linear(genome[mg].gene.x[10+$8*14], genome[mg].gene.x[11+$8*14], 0)
+		if (diameter0 < 0.2) { diameter0 = 0.2 }
+		diameter1 = linear(genome[mg].gene.x[10+$8*14], genome[mg].gene.x[11+$8*14], 1)		
+		if (diameter1 < 0.2) { diameter1 = 0.2 } 
+		diam(0:1) = diameter0:diameter1
+		
+		// I_h stuff here
+		
+		// attach daughters and distribute m	
+		if ($1>3) {
+			m1 = int($1/(2+asym))
+			m2 = $1 - m1
+			} else {
+			m1 = int($1/2)
+			m2 = $1 - m1
+			}	
+				
+		if ($1>1) {
+			// left and right daughter branches
+			counterold = counter
+			counter = counter + 1 			
+			connect dendrite[$8][counter](0), dendrite[$8][$2](1)			
+			addbranch(m1, counter, x3d(n3d()-1), y3d(n3d()-1), z3d(n3d()-1), alpha, beta, $8, counterold)
+			
+			counter = counter + 1
+			connect dendrite[$8][counter](0), dendrite[$8][$2](1)
+			addbranch(m2, counter, x3d(n3d()-1), y3d(n3d()-1), z3d(n3d()-1), alpha, beta, $8, counterold)
+			}
+}
+
+// make a soma and attach all branches
+proc makecell() { local mmax, branches
+
+	mmax = 0
+	for branches = 0, genome[mg].gene.size()/14-1 {	
+		if (genome[mg].gene.x[branches*14] > mmax) { mmax= genome[mg].gene.x[branches*14] } 
+	}
+	if (mmax < 1) { mmax =1 }
+	
+	allsections = new SectionList()
+	
+	create soma
+	create dendrite[genome[mg].gene.size()/14][2*mmax-1]
+	
+	access soma	
+	soma { 
+		allsections.append()
+		pt3dadd(10, 0, 0, 20) 
+		pt3dadd(-10, 0, 0, 20)
+		nseg = 2
+	}
+	
+	for branches = 0, genome[mg].gene.size()/14-1 {		
+		counter = 0	// counts dendritic segments
+		connect dendrite[branches][0](0), soma(1)
+		addbranch(genome[mg].gene.x[0+branches*14], 0, 0, 0, 0, genome[mg].gene.x[12+branches*14], genome[mg].gene.x[13+branches*14], branches, -1)
+	}
+	
+	access soma
+	distance()		
+	
+	//
+	forall { if (nseg == 1) { delete_section() } }
+	
+	forall {	
+		insert pas
+		g_pas = 2.5e-5
+		cm = 0.8
+		Ra = 100
+	}
+	
+	voltage = new Vector()
+	voltage.record(&soma.v(.5))
+	
+	nall = 0
+	forall { nall = nall + nseg}
+	// print "Generated a neuron with ",nall, " compartments"
+}
+
+proc unmakecell() { 
+		forall { delete_section() }
+		}
+
+// initialisation
+// $1: genome[mg] nr.
+proc init() {
+	mg = $1
+	makecell()
+	}
+
+/* ------------------------------------------------------------------------------------
+	Synapses
+*/
+
+// determines where synapses are
+// a block of space -> all dendrites that are in there get 1 synapse/5um of their length
+proc synapsespace() {
+	// x start, x stop, y start, y stop, z start, z stop for synapse-space
+	syn= new Vector()				
+	syn.append(-9999, 9999, 190, 200, -9999, 9999)  
+	syn.append(-9999, 9999, -200, -190, -9999, 9999)  	
+}
+
+proc synapseinsert() {local x0, x1, y0, y1, z0, z1
+	syncounter = 0
+	forall { 
+		for synnr = 0, int(syn.size/6)-1 { 
+		 	 x0 = syn.x[0+6*synnr]
+			 x1 = syn.x[1+6*synnr]
+			 y0 = syn.x[2+6*synnr]
+			 y1 = syn.x[3+6*synnr]
+	 		 z0 = syn.x[4+6*synnr]
+	 		 z1 = syn.x[5+6*synnr] 
+			 for xp = 1, n3d()-1 {
+		   		if (x3d(xp)>x0 && x3d(xp)<x1 && y3d(xp)>y0 && y3d(xp)<y1 && z3d(xp)>z0 && z3d(xp)<z1 ) {   
+				 	synapse[syncounter]= new Exp2Syn(arc3d(xp)/L)  
+				 	synapse[syncounter].tau1 = .5
+				 	synapse[syncounter].tau2 = 2
+				 	connection[syncounter] = new NetCon(stimulator[synnr], synapse[syncounter], 0, 0, 0.0002)
+					syncounter = syncounter + 1
+					}
+				}
+			}
+		}
+	// print "inserted ", syncounter, " synapses."
+}
+
+proc synapseremove() {
+	objref synapse[1000]
+	objref connection[1000]
+}
+
+endtemplate neuronmorph
+

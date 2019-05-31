@@ -1,0 +1,18 @@
+strdef filename
+
+// $1: generation number = file name
+proc savegeneration() { 
+	sprint(filename, "Generation%d.txt", $1) 
+	wopen(filename)
+	
+	for aa=0, cellnr-1 {
+		fprint("%g\t\t", score.x[aa])
+		fprint("%g\t", rank.x[aa])
+		for bb=0, genome[aa].gene.size-1 {
+			fprint("%g\t", genome[aa].gene.x[bb])
+			}
+		fprint("\n")
+		}
+	
+	wopen()
+}

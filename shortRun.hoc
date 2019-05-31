@@ -1,0 +1,147 @@
+/*
+
+Genetic Algorithm
+to find neurons capable of performing specified computations
+Version 3
+
+Evolution of the parameters of a local, recursive model of dendritic
+developemnt as proposed by Samsonovich and Ascoli, Hippocampus (2004)
+
+Selection for neuronal morphologies performing well in a 
+computation (linear summation, spike order detection,...)
+
+by Klaus M. Stiefel, CNL, Salk Institute, 1-2006
+
+Thanks to Michael Hines, Yale
+
+Reference:
+Mapping Function onto Neuronal Morphology.
+Klaus M. Stiefel and Terrence J. Sejnowski
+Journal of Neurophysiology
+
+Death to fascism!
+*/
+
+// GA PARAMETERS
+// ------------------------------------
+
+allseed = 	1
+cellnr = 	2 // original 16 
+generations = 	1 // original 400
+pmutated  = 	.5
+preplaced = 	.8
+cutoff = 	.8
+
+wtboth = 	0.1
+wtsize =	0.1
+wtequal =	0.02	// relative weights for lineartest
+
+config = 	99	// synpase space type
+
+// ------------------------------------
+
+load_file("parameters.hoc") 			// load this to override default parameters
+
+objref cell[cellnr], genome[cellnr]
+objref selector, rank, score, scorecopy, scoresorted, sizes
+
+rank 		= new Vector(cellnr)
+score 		= new Vector(cellnr)
+scoresorted 	= new Vector(cellnr)
+selector 	= new Random()			// behold! I shall decide the fate of your genome!
+
+// obsolete load_file("stdgui.hoc")
+load_file("nrngui.hoc")
+load_file("stimulator.hoc")
+load_file("neuromorph.hoc")
+load_file("thegenome.hoc")
+load_file("setsynapses.hoc")
+// load_file("init.hoc")
+
+// nrnmainmenu()
+
+// MAKE INITIAL POPULATION
+// ------------------------------------	
+makestimulators(2)
+sizes = new Vector(cellnr)
+
+print "Initial population"
+for cells = 0, cellnr-1 {
+			// print "Cell: ", cells 
+			
+			genome[cells] = new thegenome(cells+allseed)
+			cell[cells] = new neuronmorph(cells)
+			
+			cell[cells].synapsespace()
+			setsynapses(cells)
+			define_shape()			
+			cell[cells].synapseinsert()	
+			
+			sizes.x[cells] = cell[cells].nall    
+			 } 
+
+load_file("xover.hoc")
+load_file("lineartest.hoc")
+// load_file("ordertest.hoc")
+//load_file("display.hoc")
+xopen("display.hoc")
+load_file("savegeneration.hoc")
+
+// RUN EVOLUTIONARY LOOP
+// ------------------------------------
+for generation = 0, generations-1 {
+display()
+	print " "
+	print "Generation F", generation
+	
+	rank = new Vector(cellnr)
+	score = new Vector(cellnr, 1)
+		
+	// ordertest(sizes.mean())		// this runs the electrophysiological simulations and scores cells on the task
+	// lineartest(sizes.mean())	 				
+	lineartest(sizes.mean())
+	
+	for az=0, cellnr-1 { cell[az].synapseremove() }		
+	objref cell[cellnr]
+	
+	scoresorted = score.c
+	scoresorted.sort()
+	for az=0, cellnr-1 { rank.x[az] = scoresorted.indwhere("==", score.x[az]) }		
+	
+	scoremin = score.min()
+	scoremean = score.mean()
+	scorestdev = score.stdev()
+	savegeneration(generation)
+		
+	objref cell[cellnr]
+	for cells = 0, cellnr - 1 {
+		
+		// select genomes
+		
+		therank = cellnr
+		while (therank > cellnr-1) { therank = int(abs(selector.normal(0, cellnr*cutoff))) }
+		genome[cells].newgene = genome[rank.indwhere("==", therank)].gene.c
+
+		// mutate genomes
+		if ( selector.uniform(0, 1) < .7*pmutated ) { genome[cells].pointmutate() }
+		if ( selector.uniform(0, 1) < .1*pmutated ) { genome[cells].dubmutate() }
+		if ( selector.uniform(0, 1) < .1*pmutated ) { genome[cells].delmutate() }
+		if ( selector.uniform(0, 1) < .05*pmutated ){ xover(cells, selector.discunif(1, cellnr-1)) }
+		
+		// make a new generation
+		// print "Cell: ", cells
+		
+		if (cells == 0) {genome[cells].newgene = genome[rank.indwhere("==", 0)].gene.c }	// elitism
+		genome[cells].gene = genome[cells].newgene.c
+		
+		cell[cells] = new neuronmorph(cells)			
+		
+		cell[cells].synapsespace()
+		setsynapses(cells)
+		define_shape()			
+		cell[cells].synapseinsert()	 	
+	}
+
+}
+
+// display()

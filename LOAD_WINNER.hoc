@@ -1,0 +1,68 @@
+/*
+
+This loads the winner of a generation of the genetic algorithm
+use with GA.hoc and associated files
+
+Klaus M. Stiefel, The Salk Institute, 5-2005
+
+*/
+// PARAMETERS
+// ------------------------------------
+
+cellnr = 	1
+
+wtboth = 	0.1
+wtsize =	0.1
+wtequal =	0.1	// relative weights for lineartest
+
+config = 	99	// synpase space type
+
+// ------------------------------------
+
+objref cell[1], genome[1], score
+
+load_file("stdgui.hoc")
+nrnmainmenu()
+load_file("loadwinner.hoc")
+load_file("stimulator.hoc")
+load_file("neuromorph.hoc")
+load_file("thegenome.hoc")
+load_file("setsynapses.hoc")
+load_file("lineartest.hoc")
+// load_file("ordertest.hoc")
+//load_file("display.hoc")
+load_file("xopen.hoc")
+
+
+// nrnmainmenu()
+makestimulators(2)
+
+proc loadw() {
+	loadwinner($1)
+	
+	genome[0] = new thegenome(1)
+	genome[0].gene = winnergenome.c
+	cell[0] = new neuronmorph(0)
+	
+	cell[0].synapsespace()
+	setsynapses(0)
+	define_shape()			
+	cell[0].synapseinsert()
+
+	display()
+	
+	score = new Vector(1)
+	vgraph.exec_menu("Keep Lines")
+	lineartest(.1, .1, .1, .1)
+//	ordertest(.1, .1, .1, .1)
+	
+	scoremin = thescore
+	generation = $1
+}
+
+toload = 0
+
+xpanel("Load Winner")
+xvalue("Generation","toload",1,"",0,1)
+xbutton("Load","loadw(toload)")
+xpanel()

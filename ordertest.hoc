@@ -1,0 +1,46 @@
+objref A[cellnr], B[cellnr], AB[cellnr], BA[cellnr], score
+
+// score the cells
+// SMALL score == good performance
+// $1: population mean dendritic tree size 0, $2 cell nr 
+proc scoreme() { local linearity, equalsize, dsize
+		if (A.x[$2] > 0.02 && B.x[$2] > 0.02 && AB.x[$2] > 0.02) {
+			dsize = cell[$2].nall/$1
+			score.x[$2] = BA.x[$2]/AB.x[$2] - wtboth*log(AB.x[$2]) +  wtsize*dsize + wtequal*(A.x[$2]/B.x[$2] + B.x[$2]/A.x[$2]-2)
+		} else { score.x[$2] = 99 }							// EPSP < .2 mV -> very bad score	
+}
+
+// $1: population mean dendritic tree size 0 $2: start 1 $3: start 2 $4: run type
+proc linearrun() { local ce
+	
+	stimulator[0].start = $2
+	stimulator[1].start = $3	
+	init()
+	dt = 0.025
+	run()
+	 
+	if ($4 == 0) {	for ce = 0, cellnr-1 { AB.x[ce] = cell[ce].voltage.max() - cell[ce].voltage.x[0] } }
+	if ($4 == 1) {	for ce = 0, cellnr-1 { BA.x[ce] = cell[ce].voltage.max() - cell[ce].voltage.x[0] } }
+	if ($4 == 2) {	for ce = 0, cellnr-1 { A.x[ce] = cell[ce].voltage.max() - cell[ce].voltage.x[0] } }
+	if ($4 == 3) {	for ce = 0, cellnr-1 { B.x[ce] = cell[ce].voltage.max() - cell[ce].voltage.x[0] }  
+			for ce = 0, cellnr-1 { scoreme($1, ce) } 		
+			}
+}
+
+// $1: mean size 
+proc ordertest() {
+	
+	A = new Vector(cellnr)
+	B = new Vector(cellnr)
+	AB = new Vector(cellnr)
+	BA = new Vector(cellnr)
+		
+	// run electrophys. simulations 
+	v_init = -70
+	tstop = 50
+	
+	linearrun($1, 5, 20, 0)
+	linearrun($1, 20, 5, 1)
+	linearrun($1, 5, 999, 2)
+	linearrun($1, 9999, 5, 3)
+}

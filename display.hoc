@@ -1,0 +1,68 @@
+//
+objref shapi[16], hbox[4], vbox
+objref vgraph
+strdef toplot
+
+proc display() {
+   if (cellnr < 16) {
+	shapi[0] = new Shape(cell[0].allsections)
+	for ff = 0, cell[0].syncounter-1 {
+		shapi[0].point_mark(cell[0].synapse[ff],3)
+		shapi[0].show(0)
+		}
+	} else {
+		
+	vbox =  new VBox()
+	vbox.intercept(1)
+	for dd = 0, 3 {
+		hbox[dd] = new HBox()
+		hbox[dd].intercept(1)
+		for ee = 0, 3 {
+			shapi[ee+ 4*dd] = new Shape(cell[ee+ 4*dd].allsections)
+			for ff = 0, cell[ee+ 4*dd].syncounter-1 {
+				shapi[ee+ 4*dd].point_mark(cell[ee+ 4*dd].synapse[ff],3)
+				}
+			shapi[ee+ 4*dd].show(0)	
+		}
+		hbox[dd].intercept(0)
+		hbox[dd].map()
+	}
+	vbox.intercept(0)
+	vbox.map()
+	
+	for gg=0, 15 {		
+			shapi[gg].exec_menu("View...")	
+			shapi[gg].exec_menu("View = plot")
+			}
+	
+	}
+}
+
+if (cellnr < 16) {
+	vgraph = new Graph()
+	graphList[0].append(vgraph)		 
+	vgraph.addexpr("cell[0].soma.v(.5)", 1, 1)
+	vgraph.size(0, 20, -70, -60)
+	} else {
+	vgraph = new Graph()
+	graphList[0].append(vgraph)		
+	for ee = 0, 15 {
+			sprint(toplot, "cell[%d].soma.v(.5)", ee) 
+			vgraph.addexpr(toplot, ee - int(ee/9), 1)
+			}
+	vgraph.size(0, 20, -70, -60)
+}
+
+scoremin = -1
+scoremean = -1
+scorestdev = -1
+generation = 0
+
+xpanel("Evolution")
+xvalue("Number of Neurons: ","cellnr")
+xvalue("Generation: ","generation")
+xvalue("Best fitness: ","scoremin")
+xvalue("Average fitness: ","scoremean")
+xvalue("SD fitness: ","scorestdev")
+xlabel("Evolution!")
+xpanel()

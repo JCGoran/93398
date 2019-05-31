@@ -1,0 +1,14 @@
+create dummy
+objref stimulator[100]
+
+// inserts a NetStim into a dummy section
+proc makestimulators() {
+	for mm = 0, $1-1 {
+		access dummy
+		L = 0.1
+		diam = 0.1
+		stimulator[mm] = new NetStim(.5)
+		stimulator[mm].number = 1 
+		stimulator[mm].start =  10
+		}
+}

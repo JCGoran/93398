@@ -1,0 +1,20 @@
+proc setsynapses() {
+
+	if (config == 0) {
+			cell[$1].syn.resize(0)
+			cell[$1].syn.append(-9999, 9999, 190, 200, -9999, 9999)  
+			cell[$1].syn.append(-9999, 9999, -200, -190, -9999, 9999) 
+		}
+
+	if (config == 1) {
+			cell[$1].syn.resize(0)
+			cell[$1].syn.append(-9999, 9999, 190, 200, -9999, 9999)  
+			cell[$1].syn.append(-9999, 9999, 90, 100, -9999, 9999) 
+		}
+
+	if (config == 2) {
+			cell[$1].syn.resize(0)
+			cell[$1].syn.append(-50, -25, 190, 200, -25, 25)  
+			cell[$1].syn.append(25, 50, 190, 200, -25, 25) 
+		}
+}
